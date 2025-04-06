@@ -1,0 +1,16 @@
+---
+- name: Configure DHCP
+  hosts: routers
+  gather_facts: no
+  vars_files:
+    - ../vars/router_vars.yml
+
+  tasks:
+    - name: Configure DHCP pools
+      cisco.ios.ios_config:
+        lines: |
+          ip dhcp pool {{ item.name }}
+          network {{ item.network }}
+          default-router {{ item.gateway }}
+          dns-server {{ item.dns | join(' ') }}
+        loop: "{{ dhcp_pools }}"

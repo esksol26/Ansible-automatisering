@@ -1,0 +1,9 @@
+---
+- name: Base router configuration
+  hosts: routers
+  gather_facts: no
+
+  tasks:
+    - name: Set hostname
+      cisco.ios.ios_hostname:
+        hostname: "{{ inventory_hostname }}"

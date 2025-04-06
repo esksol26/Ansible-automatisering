@@ -1,0 +1,10 @@
+dhcp_pools:
+  - name: VLAN10
+    network: 192.168.10.0
+    gateway: 192.168.10.1
+    dns: [8.8.8.8, 8.8.4.4]
+
+ospf_networks:
+  - network: 192.168.0.0
+    mask: 0.0.255.255
+    area: 0
