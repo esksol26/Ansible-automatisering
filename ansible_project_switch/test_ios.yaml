@@ -1,0 +1,16 @@
+---
+- name: Test Cisco IOS Connection
+  hosts: switches
+  gather_facts: no
+  connection: ansible.netcommon.network_cli
+
+  tasks:
+    - name: Execute show version
+      cisco.ios.ios_command:
+        commands:
+          - show version
+      register: output
+
+    - name: Show output
+      debug:
+        var: output.stdout_lines

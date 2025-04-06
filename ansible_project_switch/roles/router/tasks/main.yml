@@ -1,0 +1,9 @@
+- name: Configure DHCP pools
+  cisco.ios.ios_config:
+    lines: |
+      {% for pool in dhcp_pools %}
+      ip dhcp pool {{ pool.name }}
+      network {{ pool.network }} {{ pool.mask }}
+      default-router {{ pool.default_router }}
+      !
+      {% endfor %}

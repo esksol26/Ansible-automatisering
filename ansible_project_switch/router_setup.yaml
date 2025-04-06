@@ -1,0 +1,40 @@
+---
+- name: Configure router with DHCP
+  hosts: routers
+  gather_facts: no
+  connection: network_cli
+  vars_files:
+    - vars/router_vars.yaml
+
+  tasks:
+    - name: Configure subinterfaces
+      cisco.ios.ios_config:
+        lines:
+          - interface {{ item.interface }}
+          - description {{ item.description }}
+          - encapsulation dot1Q {{ item.vlan_id }}
+          - ip address {{ item.ip_address }} {{ item.subnet_mask }}
+          - no shutdown
+      loop: "{{ vlan_interfaces }}"
+      tags: vlan
+
+    - name: Configure DHCP pools
+      cisco.ios.ios_config:
+        lines: |
+          {% for pool in dhcp_pools %}
+          ip dhcp pool {{ pool.name }}
+          network {{ pool.network }} {{ pool.mask }}
+          default-router {{ pool.default_router }}
+          dns-server {{ pool.dns_servers | join(' ') }}
+          lease {{ pool.lease }} 0 0
+          domain-name {{ pool.domain_name }}
+          !
+          {% endfor %}
+          ip dhcp excluded-address {{ dhcp_exclusions | join(' ') }}
+      tags: dhcp
+
+    - name: Enable IP routing
+      cisco.ios.ios_config:
+        lines:
+          - ip routing
+      tags: routing

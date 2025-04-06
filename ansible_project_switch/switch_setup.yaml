@@ -1,0 +1,25 @@
+---
+- name: Configure Cisco Switch
+  hosts: switches
+  gather_facts: no
+  connection: ansible.netcommon.network_cli
+  vars_files:
+    - vars/switch_vars.yaml
+
+  tasks:
+    - name: Configure hostname
+      cisco.ios.ios_hostname:
+        config:
+          hostname: "Switch1"
+
+    - name: Configure VLANs
+      cisco.ios.ios_vlans:
+        config: "{{ vlan_config }}"
+
+    - name: Configure interfaces
+      cisco.ios.ios_interfaces:
+        config: "{{ interfaces }}"
+
+    - name: Configure VLAN assignments
+      cisco.ios.ios_l2_interfaces:
+        config: "{{ l2_interfaces }}"

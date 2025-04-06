@@ -1,0 +1,29 @@
+---
+# VLAN Configuration
+vlan_config:
+  - vlan_id: 10
+    name: VLAN10
+    state: active
+  - vlan_id: 20
+    name: VLAN20
+    state: active
+
+# Interface basic settings
+interfaces:
+  - name: GigabitEthernet1/0/1
+    description: "Connection to VLAN10"
+    enabled: true
+  - name: GigabitEthernet1/0/2
+    description: "Connection to VLAN20"
+    enabled: true
+
+# VLAN port assignments (Legg til denne nye seksjonen)
+l2_interfaces:
+  - name: GigabitEthernet1/0/1
+    mode: "access"
+    access:
+      vlan: 10
+  - name: GigabitEthernet1/0/2
+    mode: "access"
+    access:
+      vlan: 20

@@ -1,0 +1,12 @@
+- name: Set hostname on switch
+  cisco.ios.ios_hostname:
+    config:
+      hostname: "{{ switch_hostname }}"
+
+- name: Configure VLANs
+  cisco.ios.ios_vlans:
+    config: "{{ vlan_config }}"
+
+- name: Configure interfaces
+  cisco.ios.ios_interfaces:
+    config: "{{ interfaces }}"
