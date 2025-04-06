@@ -1,74 +1,109 @@
-# Routerkonfigurasjon med Ansible
+Her er en komplett **README.md for switchkonfigurasjon** med Python-skriptet integrert og tilpasset ditt eksisterende oppsett:
+
+---
+
+# Switch Konfigurasjon med Ansible og Python
 
 ## Forutsetninger
-- Ansible installert (versjon 2.9 eller nyere)
-- Python 3.x
-- Cisco IOS Collection (`ansible-galaxy collection install cisco.ios`)
-- Seriell tilgang til router for første oppsett
+- Ansible installert
+- Python 3.x med `pyserial` bibliotek (`pip install pyserial`)
+- Seriell tilgang til switch (konsollkabel)
+- SSH tilgang etter første oppsett
 
 ## Filstruktur
 ```
-router_config/
+switch_config/
 ├── ansible.cfg
 ├── inventory.ini
-├── python_scripts/
-│   └── configure_router.py
+├── Setup_ssh.py          # Python-skript for førstegangsoppsett
 ├── playbooks/
-│   ├── base_config.yml
-│   └── dhcp.yml
+│   ├── switch_setup.yml  # Ansible playbook
 └── vars/
-    └── router_vars.yml
+    └── switch_vars.yml   # VLAN og portkonfigurasjon
 ```
 
-## Kommandoer for konfigurasjon
+## 1. Førstegangsoppsett med Python
 
-### Første oppsett via seriellport
+Kjør dette skriptet via seriellport for å aktivere SSH:
+
+```python
+import serial
+import time
+
+# Konfigurer disse verdiene
+ser_port = "COM3"               # Endre til riktig port (f.eks. /dev/ttyUSB0 på Linux)
+username = "admin"
+password = "cisco123"
+ip_address = "192.168.1.2"
+subnet_mask = "255.255.255.0"
+
+# Åpner seriell tilkobling
+ser = serial.Serial(ser_port, baudrate=9600, timeout=1)
+time.sleep(1)
+
+# Konfigurasjonskommandoer
+commands = [
+    "enable",
+    "configure terminal",
+    "hostname Switch1",
+    "interface vlan 1",
+    f"ip address {ip_address} {subnet_mask}",
+    "no shutdown",
+    "exit",
+    f"username {username} privilege 15 secret {password}",
+    "ip domain-name lokalnet.local",
+    "crypto key generate rsa",
+    "2048",  # RSA-nøkkelstørrelse
+    "ip ssh version 2",
+    "line vty 0 4",
+    "login local",
+    "transport input ssh",
+    "exit",
+    "write memory"
+]
+
+# Utfører konfigurasjon
+for cmd in commands:
+    ser.write(f"{cmd}\n".encode())
+    time.sleep(0.5)
+
+ser.close()
+print("\n✅ SSH er nå aktivert på switchen!")
+```
+
+**Kjør slik:**
 ```bash
-python3 python_scripts/configure_router.py --port /dev/ttyUSB0
-```
-*Merk:* Bytt `/dev/ttyUSB0` med riktig port (f.eks. `COM3` på Windows)
-
-### Ansible-konfigurasjon
-```bash
-# Grunnleggende oppsett
-ansible-playbook -i inventory.ini playbooks/base_config.yml
-
-# DHCP-konfigurasjon
-ansible-playbook -i inventory.ini playbooks/dhcp.yml
+python3 Setup_ssh.py
 ```
 
-## Konfigurasjonsfiler
+## 2. Ansible-konfigurasjon
 
 ### inventory.ini
 ```ini
-[routers]
-router1 ansible_host=192.168.1.1
+[switches]
+switch1 ansible_host=192.168.1.2 ansible_user=admin ansible_password=cisco123
 
-[all:vars]
-ansible_user=admin
-ansible_password=cisco123
+[switches:vars]
 ansible_connection=ansible.netcommon.network_cli
-ansible_network_os=ios
+ansible_network_os=cisco.ios.ios
 ```
 
-### router_vars.yml
-```yaml
-dhcp_pools:
-  - name: VLAN10
-    network: 192.168.10.0
-    gateway: 192.168.10.1
-    dns: [8.8.8.8, 8.8.4.4]
-
-ospf_networks:
-  - network: 192.168.0.0
-    mask: 0.0.255.255
-    area: 0
+### Kjør playbook
+```bash
+ansible-playbook -i inventory.ini playbooks/switch_setup.yml
 ```
 
 ## Verifisering
-Etter konfigurasjon, kjør følgende på routeren:
+Kjør på switchen:
 ```
+show ip interface brief
+show vlan brief
 show running-config
-show ip dhcp pool
-show ip ospf interface
 ```
+
+---
+
+**Tips:**  
+- For Windows: Bytt `COM3` til riktig seriellport  
+- For Linux: Sjekk port med `ls /dev/tty*`  
+- Vent 1-2 minutter etter SSH-oppsett før Ansible-kjøring  
