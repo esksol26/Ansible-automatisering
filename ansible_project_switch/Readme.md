@@ -1,123 +1,74 @@
-# README - Cisco Switch Konfigurasjon
-
-## Innholdsfortegnelse
-1. [Forutsetninger](#forutsetninger)
-2. [Filstruktur](#filstruktur)
-3. [Brukerguide](#brukerguide)
-4. [Variabeltilpasning](#variabeltilpasning)
-5. [Feilsøking](#feilsøking)
+# Routerkonfigurasjon med Ansible
 
 ## Forutsetninger
-
-Før du starter, sørg for at du har følgende installert:
-- Ansible (versjon 2.9 eller nyere)
+- Ansible installert (versjon 2.9 eller nyere)
 - Python 3.x
-- Cisco IOS Collection for Ansible (`ansible-galaxy collection install cisco.ios`)
+- Cisco IOS Collection (`ansible-galaxy collection install cisco.ios`)
+- Seriell tilgang til router for første oppsett
 
 ## Filstruktur
-
 ```
-cisco_switch/
-├── ansible.cfg               # Ansible konfigurasjon
-├── inventory.ini            # Enhetsliste og tilgangsinformasjon
-├── switch_setup.yaml        # Hovedplaybook for switchkonfigurasjon
-├── test_ios.yaml            # Testplaybook for tilkobling
+router_config/
+├── ansible.cfg
+├── inventory.ini
+├── python_scripts/
+│   └── configure_router.py
+├── playbooks/
+│   ├── base_config.yml
+│   └── dhcp.yml
 └── vars/
-    └── switch_vars.yaml     # Variabler for switchkonfigurasjon
+    └── router_vars.yml
 ```
 
-## Brukerguide
+## Kommandoer for konfigurasjon
 
-### 1. Test tilkobling til switch
-
-Før full konfigurasjon, test tilkoblingen med:
-
+### Første oppsett via seriellport
 ```bash
-ansible-playbook -i inventory.ini test_ios.yaml
+python3 python_scripts/configure_router.py --port /dev/ttyUSB0
 ```
+*Merk:* Bytt `/dev/ttyUSB0` med riktig port (f.eks. `COM3` på Windows)
 
-Forventet output viser switchens versjonsinformasjon.
-
-### 2. Kjør full konfigurasjon
-
+### Ansible-konfigurasjon
 ```bash
-ansible-playbook -i inventory.ini switch_setup.yaml
+# Grunnleggende oppsett
+ansible-playbook -i inventory.ini playbooks/base_config.yml
+
+# DHCP-konfigurasjon
+ansible-playbook -i inventory.ini playbooks/dhcp.yml
 ```
 
-Denne kommandoen vil utføre:
-- Sett hostname
-- Opprette VLAN-er
-- Konfigurere tilknyttede porter
+## Konfigurasjonsfiler
 
-### 3. Verifiser konfigurasjon
+### inventory.ini
+```ini
+[routers]
+router1 ansible_host=192.168.1.1
 
-Logg inn på switchen manuelt og kjør:
+[all:vars]
+ansible_user=admin
+ansible_password=cisco123
+ansible_connection=ansible.netcommon.network_cli
+ansible_network_os=ios
 ```
-show vlan brief
-show interfaces status
-```
 
-## Variabeltilpasning
-
-Rediger `vars/switch_vars.yaml` for å tilpasse konfigurasjonen:
-
+### router_vars.yml
 ```yaml
-# Eksempel på VLAN-definisjoner
-vlan_config:
-  - vlan_id: 10               # VLAN ID
-    name: VLAN10              # VLAN navn
-    state: active             # VLAN status
+dhcp_pools:
+  - name: VLAN10
+    network: 192.168.10.0
+    gateway: 192.168.10.1
+    dns: [8.8.8.8, 8.8.4.4]
 
-# Eksempel på portkonfigurasjon
-l2_interfaces:
-  - name: GigabitEthernet1/0/1  # Portnavn
-    mode: "access"              # Portmodus (access/trunk)
-    access:
-      vlan: 10                 # Tilknyttet VLAN for access-port
+ospf_networks:
+  - network: 192.168.0.0
+    mask: 0.0.255.255
+    area: 0
 ```
 
-## Feilsøking
-
-### Vanlige problemer og løsninger
-
-1. **Tilkoblingsfeil**:
-   - Sjekk at IP-adressen i `inventory.ini` er riktig
-   - Verifiser at brukernavn/passord er korrekt
-   - Test med `ping` og manuell SSH-tilkobling først
-
-2. **VLAN opprettes ikke**:
-   - Sjekk at `vlan_config` i switch_vars.yaml er korrekt formatert
-   - Kjør med `-vvv` for detaljert feilsøking:
-     ```bash
-     ansible-playbook -i inventory.ini switch_setup.yaml -vvv
-     ```
-
-3. **Portkonfigurasjon feiler**:
-   - Bekreft at portnavnene matcher faktisk hardware
-   - Sjekk at VLAN-ene er opprettet før porttilordning
-
-## Eksempelkjøring
-
-```bash
-$ ansible-playbook -i inventory.ini switch_setup.yaml
-
-PLAY [Configure Cisco Switch] *******************************************
-
-TASK [Configure hostname] **********************************************
-changed: [switch1]
-
-TASK [Configure VLANs] *************************************************
-changed: [switch1]
-
-TASK [Configure interfaces] ********************************************
-changed: [switch1]
-
-PLAY RECAP *************************************************************
-switch1 : ok=3 changed=3 unreachable=0 failed=0 skipped=0 rescued=0 ignored=0
+## Verifisering
+Etter konfigurasjon, kjør følgende på routeren:
 ```
-
-## Viktige notater
-
-- Skriptet er testet med Cisco IOS 15.x
-- Endre passord i `inventory.ini` før bruk i produksjon
-- For trunk-konfigurasjon, endre `mode: "access"` til `mode: "trunk"` og legg til `trunk:`-parametere
+show running-config
+show ip dhcp pool
+show ip ospf interface
+```
